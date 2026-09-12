@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KubeRAG 智能知识库问答</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; height: 100vh; overflow: hidden; }
+        .app { display: flex; height: 100vh; }
+
+        /* 侧边栏 */
+        .sidebar { width: 260px; background: #1a1f2e; color: #fff; display: flex; flex-direction: column; padding: 16px; }
+        .logo { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #4fc3f7; }
+        .btn-new, .btn-upload { display: block; width: 100%; padding: 10px; margin-bottom: 10px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-align: center; }
+        .btn-new { background: #4fc3f7; color: #1a1f2e; font-weight: bold; }
+        .btn-new:hover { background: #29b6f6; }
+        .btn-upload { background: #2a3142; color: #ccc; border: 1px dashed #4fc3f7; }
+        .btn-upload:hover { background: #353d52; }
+        .chat-list { flex: 1; overflow-y: auto; margin-top: 10px; }
+        .chat-item { padding: 10px; border-radius: 6px; cursor: pointer; margin-bottom: 4px; font-size: 13px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-item:hover { background: #2a3142; }
+        .chat-item.active { background: #2a3142; color: #4fc3f7; }
+
+        /* 聊天区域 */
+        .chat-area { flex: 1; display: flex; flex-direction: column; }
+        .chat-header { padding: 16px 24px; background: #fff; border-bottom: 1px solid #e0e0e0; font-weight: bold; color: #333; }
+        .messages { flex: 1; overflow-y: auto; padding: 24px; }
+        .welcome { text-align: center; color: #999; margin-top: 100px; }
+        .welcome h2 { margin-bottom: 10px; color: #666; }
+        .message { margin-bottom: 20px; display: flex; }
+        .message.user { justify-content: flex-end; }
+        .message .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .message.user .avatar { background: #4fc3f7; margin-left: 10px; }
+        .message.assistant .avatar { background: #1a1f2e; margin-right: 10px; }
+        .message .bubble { max-width: 70%; padding: 12px 16px; border-radius: 12px; line-height: 1.6; }
+        .message.user .bubble { background: #4fc3f7; color: #fff; border-bottom-right-radius: 4px; }
+        .message.assistant .bubble { background: #fff; color: #333; border-bottom-left-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .message .sources { margin-top: 8px; font-size: 12px; color: #888; }
+        .message .sources .source-item { padding: 4px 8px; background: #f0f0f0; border-radius: 4px; margin-top: 4px; }
+
+        /* 输入区域 */
+        .input-area { padding: 16px 24px; background: #fff; border-top: 1px solid #e0e0e0; display: flex; gap: 10px; align-items: flex-end; }
+        #questionInput { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; resize: none; font-size: 14px; font-family: inherit; max-height: 120px; }
+        #questionInput:focus { outline: none; border-color: #4fc3f7; }
+        .btn-send { padding: 12px 24px; background: #4fc3f7; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; }
+        .btn-send:hover { background: #29b6f6; }
+        .btn-send:disabled { background: #ccc; cursor: not-allowed; }
+        .typing::after { content: '▋'; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="logo">⚡ KubeRAG</div>
+            <button class="btn-new" onclick="newChat()">+ 新建对话</button>
+            <label class="btn-upload">
+                📄 上传 PDF
+                <input type="file" id="fileInput" accept=".pdf" style="display:none" onchange="uploadPDF()">
+            </label>
+            <div class="chat-list" id="chatList"></div>
+        </aside>
+        <main class="chat-area">
+            <div class="chat-header"><span id="currentChatTitle">新对话</span></div>
+            <div class="messages" id="messages">
+                <div class="welcome"><h2>👋 欢迎使用 KubeRAG</h2><p>上传 PDF 文档，然后开始提问吧！</p></div>
+            </div>
+            <div class="input-area">
+                <textarea id="questionInput" placeholder="输入你的问题，按 Enter 发送..." rows="1" onkeydown="handleKeyDown(event)"></textarea>
+                <button class="btn-send" id="sendBtn" onclick="sendQuestion()">发送</button>
+            </div>
+        </main>
+    </div>
+    <script>
+        let currentSessionId = localStorage.getItem('kuberag_session') || generateSessionId();
+        let chatSessions = JSON.parse(localStorage.getItem('kuberag_sessions') || '{}');
+
+        function generateSessionId() {
+            return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+        function saveSessions() {
+            localStorage.setItem('kuberag_sessions', JSON.stringify(chatSessions));
+            localStorage.setItem('kuberag_session', currentSessionId);
+        }
+        function renderChatList() {
+            const list = document.getElementById('chatList');
+            list.innerHTML = '';
+            Object.keys(chatSessions).reverse().forEach(id => {
+                const item = document.createElement('div');
+                item.className = 'chat-item' + (id === currentSessionId ? ' active' : '');
+                item.textContent = chatSessions[id].title || '新对话';
+                item.onclick = () => switchChat(id);
+                list.appendChild(item);
+            });
+        }
+        function switchChat(id) {
+            currentSessionId = id;
+            saveSessions();
+            renderChatList();
+            loadChatMessages();
+            document.getElementById('currentChatTitle').textContent = chatSessions[id].title || '新对话';
+        }
+        function newChat() {
+            currentSessionId = generateSessionId();
+            chatSessions[currentSessionId] = { title: '新对话', messages: [] };
+            saveSessions();
+            renderChatList();
+            document.getElementById('messages').innerHTML = '<div class="welcome"><h2>👋 欢迎使用 KubeRAG</h2><p>上传 PDF 文档，然后开始提问吧！</p></div>';
+            document.getElementById('currentChatTitle').textContent = '新对话';
+        }
+        function loadChatMessages() {
+            const messagesEl = document.getElementById('messages');
+            const session = chatSessions[currentSessionId];
+            if (!session || session.messages.length === 0) {
+                messagesEl.innerHTML = '<div class="welcome"><h2>👋 欢迎使用 KubeRAG</h2><p>上传 PDF 文档，然后开始提问吧！</p></div>';
+                return;
+            }
+            messagesEl.innerHTML = '';
+            session.messages.forEach(msg => addMessageToDOM(msg.role, msg.content, msg.sources));
+            scrollToBottom();
+        }
+        function addMessage(role, content, sources) {
+            if (!chatSessions[currentSessionId]) chatSessions[currentSessionId] = { title: '新对话', messages: [] };
+            chatSessions[currentSessionId].messages.push({ role, content, sources });
+            if (role === 'user' && chatSessions[currentSessionId].title === '新对话') {
+                chatSessions[currentSessionId].title = content.substring(0, 20);
+                document.getElementById('currentChatTitle').textContent = chatSessions[currentSessionId].title;
+            }
+            saveSessions();
+            renderChatList();
+            return addMessageToDOM(role, content, sources);
+        }
+        function addMessageToDOM(role, content, sources) {
+            const messagesEl = document.getElementById('messages');
+            const welcome = messagesEl.querySelector('.welcome');
+            if (welcome) welcome.remove();
+            const msg = document.createElement('div');
+            msg.className = 'message ' + role;
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.textContent = role === 'user' ? '👤' : '🤖';
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            const contentEl = document.createElement('div');
+            contentEl.className = 'content';
+            contentEl.textContent = content;
+            bubble.appendChild(contentEl);
+            if (sources && sources.length > 0) {
+                const sourcesEl = document.createElement('div');
+                sourcesEl.className = 'sources';
+                sourcesEl.innerHTML = '<strong>📚 参考来源：</strong>';
+                sources.forEach((s, i) => {
+                    const item = document.createElement('div');
+                    item.className = 'source-item';
+                    item.textContent = `[${i+1}] ${s.file} 第${s.page}页`;
+                    sourcesEl.appendChild(item);
+                });
+                bubble.appendChild(sourcesEl);
+            }
+            if (role === 'user') { msg.appendChild(bubble); msg.appendChild(avatar); }
+            else { msg.appendChild(avatar); msg.appendChild(bubble); }
+            messagesEl.appendChild(msg);
+            scrollToBottom();
+            return contentEl;
+        }
+        function scrollToBottom() {
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+        }
+        async function uploadPDF() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                const response = await fetch('/upload', { method: 'POST', body: formData });
+                const result = await response.json();
+                alert('上传成功：' + result.message);
+            } catch (error) {
+                alert('上传失败：' + error.message);
+            }
+            fileInput.value = '';
+        }
+        async function sendQuestion() {
+            const input = document.getElementById('questionInput');
+            const question = input.value.trim();
+            if (!question) return;
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+            input.value = '';
+            addMessage('user', question);
+            const contentEl = addMessage('assistant', '');
+            contentEl.classList.add('typing');
+            try {
+                const response = await fetch('/ask/stream', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ question, session_id: currentSessionId })
+                });
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullAnswer = '';
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value, { stream: true });
+                    fullAnswer += chunk;
+                    contentEl.textContent = fullAnswer;
+                    scrollToBottom();
+                }
+                contentEl.classList.remove('typing');
+                // 流式输出完成后获取出处（语义缓存已命中，调用很快）
+                const askResp = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ question, session_id: currentSessionId })
+                });
+                const askResult = await askResp.json();
+                const sources = askResult.answer?.sources || [];
+                // 更新本地存储
+                const session = chatSessions[currentSessionId];
+                const lastMsg = session.messages[session.messages.length - 1];
+                lastMsg.content = fullAnswer;
+                lastMsg.sources = sources;
+                saveSessions();
+                // 在 DOM 中显示出处
+                if (sources.length > 0) {
+                    const bubble = contentEl.parentElement;
+                    const sourcesEl = document.createElement('div');
+                    sourcesEl.className = 'sources';
+                    sourcesEl.innerHTML = '<strong>📚 参考来源：</strong>';
+                    sources.forEach((s, i) => {
+                        const item = document.createElement('div');
+                        item.className = 'source-item';
+                        item.textContent = `[${i+1}] ${s.file} 第${s.page}页`;
+                        sourcesEl.appendChild(item);
+                    });
+                    bubble.appendChild(sourcesEl);
+                }
+            } catch (error) {
+                contentEl.classList.remove('typing');
+                contentEl.textContent = '出错了：' + error.message;
+            }
+            sendBtn.disabled = false;
+            input.focus();
+        }
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendQuestion();
+            }
+        }
+        renderChatList();
+        loadChatMessages();
+    </script>
+</body>
+</html>

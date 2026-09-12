@@ -1,0 +1,23 @@
+version: "3.8"
+services:
+  kuberag:
+    build: .
+    container_name: kuberag
+    ports:
+      - "8000:9000"
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - BIGMODEL_API_KEY=${BIGMODEL_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: kuberag-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped

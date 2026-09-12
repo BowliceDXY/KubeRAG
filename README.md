@@ -36,25 +36,28 @@
 
 ## 项目结构
 KubeRAG/
-├── app/
-│ ├── init.py
-│ ├── main.py # FastAPI 入口，API 路由
-│ ├── rag.py # RAG 核心：混合检索、重排序、问答
-│ ├── db.py # SQLite 对话历史持久化
-│ └── cache.py # 语义缓存
-├── gateway/
-│ ├── main.go # Go 网关：限流、日志、反向代理
-│ └── go.mod
-├── static/
-│ └── index.html # 前端聊天页面
-├── data/
-│ ├── uploads/ # 上传的 PDF 文件
-│ ├── chroma_db/ # ChromaDB 向量数据
-│ └── chat_history.db # SQLite 对话历史
-├── requirements.txt
+├── app/                    # Python 后端
+│   ├── __init__.py
+│   ├── main.py
+│   ├── rag.py
+│   ├── agent.py
+│   ├── cache.py
+│   └── db.py
+├── gateway/                # Go 网关
+│   ├── main.go
+│   └── go.mod
+├── static/                 # 前端
+│   └── index.html
+├── data/                   # 数据（不提交到git）
+│   ├── uploads/           # 上传的PDF
+│   ├── chroma_db/         # ChromaDB向量数据
+│   └── chat_history.db    # SQLite对话历史
+├── .env                    # 环境变量（不提交）
+├── .env.example            # 环境变量示例
+├── .gitignore
 ├── Dockerfile
 ├── docker-compose.yml
-├── .env.example
+├── requirements.txt
 └── README.md
 
 

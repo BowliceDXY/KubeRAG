@@ -31,6 +31,7 @@
 - **Docker 部署**：docker-compose 一键启动
 
 ## 项目架构
+<img width="1141" height="1085" alt="屏幕截图 2026-09-12 205545" src="https://github.com/user-attachments/assets/45aa918f-bdcd-4510-99dc-0624bdbc8ce9" />
 
 
 ## 项目结构

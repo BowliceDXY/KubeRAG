@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kuberag-config
+  namespace: kuberag
+data:
+  # 服务间通信地址（K8s Service DNS）
+  REDIS_URL: "redis://redis:6379/0"
+  BACKEND_URL: "http://backend:9003"
+  # 日志级别
+  LOG_LEVEL: "info"
+  # 数据目录（挂载 PVC 的路径）
+  DATA_DIR: "/app/data"

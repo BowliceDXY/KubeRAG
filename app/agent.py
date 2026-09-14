@@ -2,9 +2,11 @@
 Agent 工具调用：让大模型自主决定调用什么工具来回答问题
 支持工具：知识库查询、计算器、获取当前时间
 """
+import ast
 import json
 import datetime
 from app.rag import llm_client, hybrid_search, rerank, logger
+from app.web_search import web_search
 
 
 # ===== 工具定义 =====
@@ -53,6 +55,23 @@ TOOLS = [
                 "properties": {}
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_search",
+            "description": "搜索公开网络资料。当知识库没有相关内容、或需要最新/通用信息时使用",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "搜索关键词"
+                    }
+                },
+                "required": ["query"]
+            }
+        }
     }
 ]
 
@@ -72,14 +91,38 @@ def search_knowledge_base(query):
     return "\n\n".join(context_parts)
 
 
+# AST 白名单：仅允许数字常量与 + - * / 运算，禁止任何函数调用/属性访问
+_ALLOWED_NODES = (ast.Expression, ast.Constant, ast.BinOp, ast.UnaryOp)
+_ALLOWED_OPS = (ast.Add, ast.Sub, ast.Mult, ast.Div)
+
+
+def _check_node(node):
+    """递归校验表达式节点是否在安全白名单内"""
+    if isinstance(node, ast.Constant):
+        return isinstance(node.value, (int, float))
+    if isinstance(node, ast.BinOp):
+        return isinstance(node.op, _ALLOWED_OPS) and _check_node(node.left) and _check_node(node.right)
+    if isinstance(node, ast.UnaryOp):
+        return isinstance(node.op, (ast.UAdd, ast.USub)) and _check_node(node.operand)
+    return False
+
+
 def calculator(expression):
-    """计算器工具（安全计算，只允许数字和运算符）"""
-    allowed_chars = set("0123456789+-*/(). ")
-    if not all(c in allowed_chars for c in expression):
-        return "错误：表达式包含非法字符"
+    """
+    计算器工具：基于 AST 白名单的安全求值，仅支持数字与四则运算。
+    相比 eval：在语法树层面拒绝函数调用、属性访问、下标等任何危险操作。
+    """
     try:
-        result = eval(expression, {"__builtins__": {}}, {})
+        tree = ast.parse(expression, mode="eval")
+    except SyntaxError:
+        return "错误：表达式语法不正确"
+    if not _check_node(tree.body):
+        return "错误：表达式包含非法字符或操作"
+    try:
+        result = eval(compile(tree, "<string>", "eval"), {"__builtins__": {}}, {})
         return f"计算结果：{expression} = {result}"
+    except ZeroDivisionError:
+        return "错误：除数不能为 0"
     except Exception as e:
         return f"计算错误：{str(e)}"
 
@@ -90,11 +133,23 @@ def get_current_time():
     return f"当前时间是：{now.strftime('%Y年%m月%d日 %H:%M:%S')}，星期{['一','二','三','四','五','六','日'][now.weekday()]}"
 
 
+def web_search_tool(query):
+    """网络搜索工具：返回搜索结果的标题、链接和摘要"""
+    results = web_search(query, max_results=5)
+    if not results:
+        return "网络搜索没有找到相关内容。"
+    return "\n\n".join([
+        f"[{i+1}] {r['title']} ({r['url']})\n{r['content']}"
+        for i, r in enumerate(results)
+    ])
+
+
 # 工具名称 → 函数映射
 TOOL_FUNCTIONS = {
     "search_knowledge_base": search_knowledge_base,
     "calculator": calculator,
     "get_current_time": get_current_time,
+    "web_search": web_search_tool,
 }
 
 
@@ -110,6 +165,7 @@ def agent_ask(question, max_iterations=5):
         {"role": "system", "content": "你是一个智能助手，可以使用工具来回答问题。如果问题需要查询文档、计算数学题或获取时间，请调用对应的工具。如果不需要工具，直接回答。"},
         {"role": "user", "content": question}
     ]
+    tools_used = []  # 累计所有轮次实际调用的工具，任何出口都返回真实记录
 
     for i in range(max_iterations):
         resp = llm_client.chat.completions.create(
@@ -127,11 +183,10 @@ def agent_ask(question, max_iterations=5):
             logger.info(f"Agent 完成：第{i+1}轮，无工具调用，直接回答")
             return {
                 "answer": message.content,
-                "tools_used": []
+                "tools_used": tools_used
             }
 
         # 执行所有工具调用
-        tools_used = []
         for tool_call in message.tool_calls:
             tool_name = tool_call.function.name
             tool_args = json.loads(tool_call.function.arguments)

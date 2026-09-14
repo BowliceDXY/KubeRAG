@@ -1,0 +1,517 @@
+{
+  "BM25": {
+    "strategy": "BM25",
+    "hit_rate_at_3": 0.9,
+    "hit_rate_at_5": 0.95,
+    "mrr": 0.8433
+  },
+  "Vector": {
+    "strategy": "Vector",
+    "hit_rate_at_3": 0.75,
+    "hit_rate_at_5": 0.75,
+    "mrr": 0.6917
+  },
+  "Hybrid(RRF)": {
+    "strategy": "Hybrid(RRF)",
+    "hit_rate_at_3": 0.8,
+    "hit_rate_at_5": 0.85,
+    "mrr": 0.7375
+  },
+  "Hybrid+Rerank": {
+    "strategy": "Hybrid+Rerank",
+    "hit_rate_at_3": 0.95,
+    "hit_rate_at_5": 0.95,
+    "mrr": 0.875
+  },
+  "_testset_size": 20,
+  "_details": {
+    "BM25": [
+      {
+        "question": "这份文档中“难题及应对方法”属于第几部分？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "“智+媒”——新媒体商业运营策略中人工智能的落地应用研究的指导老师是谁？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "这个项目的立项依据及项目价值是从哪个背景展开的？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "针对平台搭建中技术难题，有哪些应对方法？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "5G技术商业化进程不断加速的背景下，政务新媒体需要如何拓展主体范围并强化运营能力？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "5G时代政务新媒体的发展路径是什么？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "5G时代政务新媒体的传播方式呈现出哪些趋势？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "我国政务新媒体在哪些方面发挥了作用并形成了优势？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "有哪些大模型相关的工程师认证？",
+        "expected": "AI.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "构建中药知识图谱问答系统时，如何实现结构化查询与语义匹配？",
+        "expected": "AI.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "2026 AI大模型开发课程大纲中，第三部分“大模型智能体平台开发”要求学员能够理解和应用什么原理，",
+        "expected": "AI.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "DeepSeek V3、DeepSeek Math和DeepSeek R1分别是什么模型，它们的核心",
+        "expected": "AI.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "新媒体时代人工智能在播音主持领域中的应用可以带来什么效果？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": 3,
+        "found": true
+      },
+      {
+        "question": "根据文档片段，人工智能主播的受众情况调查分析显示了什么？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "这本书共有哪八个部分？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "人工智能主播语言创作手段分析、受众调查报告、应用访谈以及语用模式和趋势分别是什么？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "人工智能时代新闻伦理研究重点及其趋向这篇文献的关键词是什么？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": null,
+        "found": false
+      },
+      {
+        "question": "社交媒体基础上的传播渠道容易带来哪些问题？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "人工智能时代新闻伦理研究需要回答哪些亟待学术破题的重要领域？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": 3,
+        "found": true
+      },
+      {
+        "question": "这段内容转引自哪篇文章？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": 5,
+        "found": true
+      }
+    ],
+    "Vector": [
+      {
+        "question": "这份文档中“难题及应对方法”属于第几部分？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "“智+媒”——新媒体商业运营策略中人工智能的落地应用研究的指导老师是谁？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "这个项目的立项依据及项目价值是从哪个背景展开的？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "针对平台搭建中技术难题，有哪些应对方法？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "5G技术商业化进程不断加速的背景下，政务新媒体需要如何拓展主体范围并强化运营能力？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "5G时代政务新媒体的发展路径是什么？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": 3,
+        "found": true
+      },
+      {
+        "question": "5G时代政务新媒体的传播方式呈现出哪些趋势？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": null,
+        "found": false
+      },
+      {
+        "question": "我国政务新媒体在哪些方面发挥了作用并形成了优势？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": 2,
+        "found": true
+      },
+      {
+        "question": "有哪些大模型相关的工程师认证？",
+        "expected": "AI.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "构建中药知识图谱问答系统时，如何实现结构化查询与语义匹配？",
+        "expected": "AI.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "2026 AI大模型开发课程大纲中，第三部分“大模型智能体平台开发”要求学员能够理解和应用什么原理，",
+        "expected": "AI.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "DeepSeek V3、DeepSeek Math和DeepSeek R1分别是什么模型，它们的核心",
+        "expected": "AI.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "新媒体时代人工智能在播音主持领域中的应用可以带来什么效果？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": null,
+        "found": false
+      },
+      {
+        "question": "根据文档片段，人工智能主播的受众情况调查分析显示了什么？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "这本书共有哪八个部分？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": null,
+        "found": false
+      },
+      {
+        "question": "人工智能主播语言创作手段分析、受众调查报告、应用访谈以及语用模式和趋势分别是什么？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "人工智能时代新闻伦理研究重点及其趋向这篇文献的关键词是什么？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": null,
+        "found": false
+      },
+      {
+        "question": "社交媒体基础上的传播渠道容易带来哪些问题？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "人工智能时代新闻伦理研究需要回答哪些亟待学术破题的重要领域？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "这段内容转引自哪篇文章？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": null,
+        "found": false
+      }
+    ],
+    "Hybrid(RRF)": [
+      {
+        "question": "这份文档中“难题及应对方法”属于第几部分？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "“智+媒”——新媒体商业运营策略中人工智能的落地应用研究的指导老师是谁？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 2,
+        "found": true
+      },
+      {
+        "question": "这个项目的立项依据及项目价值是从哪个背景展开的？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "针对平台搭建中技术难题，有哪些应对方法？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "5G技术商业化进程不断加速的背景下，政务新媒体需要如何拓展主体范围并强化运营能力？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "5G时代政务新媒体的发展路径是什么？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": 2,
+        "found": true
+      },
+      {
+        "question": "5G时代政务新媒体的传播方式呈现出哪些趋势？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": null,
+        "found": false
+      },
+      {
+        "question": "我国政务新媒体在哪些方面发挥了作用并形成了优势？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "有哪些大模型相关的工程师认证？",
+        "expected": "AI.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "构建中药知识图谱问答系统时，如何实现结构化查询与语义匹配？",
+        "expected": "AI.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "2026 AI大模型开发课程大纲中，第三部分“大模型智能体平台开发”要求学员能够理解和应用什么原理，",
+        "expected": "AI.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "DeepSeek V3、DeepSeek Math和DeepSeek R1分别是什么模型，它们的核心",
+        "expected": "AI.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "新媒体时代人工智能在播音主持领域中的应用可以带来什么效果？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": 4,
+        "found": true
+      },
+      {
+        "question": "根据文档片段，人工智能主播的受众情况调查分析显示了什么？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "这本书共有哪八个部分？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": 2,
+        "found": true
+      },
+      {
+        "question": "人工智能主播语言创作手段分析、受众调查报告、应用访谈以及语用模式和趋势分别是什么？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "人工智能时代新闻伦理研究重点及其趋向这篇文献的关键词是什么？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": null,
+        "found": false
+      },
+      {
+        "question": "社交媒体基础上的传播渠道容易带来哪些问题？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "人工智能时代新闻伦理研究需要回答哪些亟待学术破题的重要领域？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "这段内容转引自哪篇文章？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": null,
+        "found": false
+      }
+    ],
+    "Hybrid+Rerank": [
+      {
+        "question": "这份文档中“难题及应对方法”属于第几部分？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 2,
+        "found": true
+      },
+      {
+        "question": "“智+媒”——新媒体商业运营策略中人工智能的落地应用研究的指导老师是谁？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "这个项目的立项依据及项目价值是从哪个背景展开的？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "针对平台搭建中技术难题，有哪些应对方法？",
+        "expected": "2024年大连大学人工智能精英大赛.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "5G技术商业化进程不断加速的背景下，政务新媒体需要如何拓展主体范围并强化运营能力？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "5G时代政务新媒体的发展路径是什么？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "5G时代政务新媒体的传播方式呈现出哪些趋势？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "我国政务新媒体在哪些方面发挥了作用并形成了优势？",
+        "expected": "5G时代政务新媒体的发展路...络发展状况统计报告",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "有哪些大模型相关的工程师认证？",
+        "expected": "AI.pdf",
+        "rank": 2,
+        "found": true
+      },
+      {
+        "question": "构建中药知识图谱问答系统时，如何实现结构化查询与语义匹配？",
+        "expected": "AI.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "2026 AI大模型开发课程大纲中，第三部分“大模型智能体平台开发”要求学员能够理解和应用什么原理，",
+        "expected": "AI.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "DeepSeek V3、DeepSeek Math和DeepSeek R1分别是什么模型，它们的核心",
+        "expected": "AI.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "新媒体时代人工智能在播音主持领域中的应用可以带来什么效果？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "根据文档片段，人工智能主播的受众情况调查分析显示了什么？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "这本书共有哪八个部分？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "人工智能主播语言创作手段分析、受众调查报告、应用访谈以及语用模式和趋势分别是什么？",
+        "expected": "新媒体时代人工智能在播音主...体用人工智能主播发",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "人工智能时代新闻伦理研究重点及其趋向这篇文献的关键词是什么？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": null,
+        "found": false
+      },
+      {
+        "question": "社交媒体基础上的传播渠道容易带来哪些问题？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "人工智能时代新闻伦理研究需要回答哪些亟待学术破题的重要领域？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": 1,
+        "found": true
+      },
+      {
+        "question": "这段内容转引自哪篇文章？",
+        "expected": "人工智能时代新闻伦理研究重点及其趋向_赵瑜.pdf",
+        "rank": 2,
+        "found": true
+      }
+    ]
+  }
+}

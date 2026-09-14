@@ -1,0 +1,30 @@
+# Ingress：外部流量入口，将域名路由到网关服务
+# 需要集群已安装 Ingress Controller（如 ingress-nginx）
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kuberag-ingress
+  namespace: kuberag
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"        # 允许上传大 PDF
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"     # 流式问答需要长超时
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"        # 关闭缓冲，支持 SSE 流式输出
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: kuberag.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 8080
+# 如需 HTTPS，添加以下配置：
+# tls:
+#   - hosts:
+#       - kuberag.local
+#     secretName: kuberag-tls

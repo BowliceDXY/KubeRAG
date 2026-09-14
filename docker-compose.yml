@@ -4,8 +4,9 @@ services:
     build: .
     container_name: kuberag
     ports:
-      - "8000:9000"
+      - "9003:9003"
     environment:
+      - PORT=9003
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - BIGMODEL_API_KEY=${BIGMODEL_API_KEY}
       - REDIS_URL=redis://redis:6379/0
@@ -13,6 +14,18 @@ services:
       - ./data:/app/data
     depends_on:
       - redis
+    restart: unless-stopped
+
+  gateway:
+    build: ./gateway
+    container_name: kuberag-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - GATEWAY_PORT=:8080
+      - BACKEND_URL=http://kuberag:9003
+    depends_on:
+      - kuberag
     restart: unless-stopped
 
   redis:

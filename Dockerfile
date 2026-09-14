@@ -16,8 +16,8 @@ RUN pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/ && \
 # 复制项目代码
 COPY . .
 
-# 暴露端口
-EXPOSE 8000
+# 暴露端口（统一 9003）
+EXPOSE 9003
 
-# 启动服务
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9000"]
+# 启动服务（端口可用 PORT 环境变量覆盖）
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-9003}"]

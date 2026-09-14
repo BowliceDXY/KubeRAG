@@ -1,0 +1,18 @@
+# Kustomize 配置：kubectl apply -k k8s/ 一键部署
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kuberag
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - redis.yaml
+  - backend.yaml
+  - gateway.yaml
+  - hpa.yaml
+  - ingress.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: kuberag

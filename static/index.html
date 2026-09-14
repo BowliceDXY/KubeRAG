@@ -73,8 +73,10 @@
         </main>
     </div>
     <script>
-        let currentSessionId = localStorage.getItem('kuberag_session') || generateSessionId();
-        let chatSessions = JSON.parse(localStorage.getItem('kuberag_sessions') || '{}');
+        // ===== 状态 =====
+        let currentSessionId = localStorage.getItem('kuberag_session') || null;
+        let chatSessions = JSON.parse(localStorage.getItem('kuberag_sessions') || '{}'); // localStorage 缓存（降级用）
+        let sessions = []; // 从后端拉取的会话列表（权威来源）
 
         function generateSessionId() {
             return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -83,43 +85,80 @@
             localStorage.setItem('kuberag_sessions', JSON.stringify(chatSessions));
             localStorage.setItem('kuberag_session', currentSessionId);
         }
+
+        // ===== 后端数据拉取 =====
+        async function fetchSessions() {
+            try {
+                const resp = await fetch('/sessions');
+                const data = await resp.json();
+                sessions = data.sessions || [];
+            } catch (e) {
+                // 后端不可用时降级到 localStorage
+                sessions = Object.keys(chatSessions).map(id => ({
+                    session_id: id,
+                    title: chatSessions[id].title || '新对话'
+                }));
+            }
+            return sessions;
+        }
+
         function renderChatList() {
             const list = document.getElementById('chatList');
             list.innerHTML = '';
-            Object.keys(chatSessions).reverse().forEach(id => {
+            sessions.forEach(s => {
                 const item = document.createElement('div');
-                item.className = 'chat-item' + (id === currentSessionId ? ' active' : '');
-                item.textContent = chatSessions[id].title || '新对话';
-                item.onclick = () => switchChat(id);
+                item.className = 'chat-item' + (s.session_id === currentSessionId ? ' active' : '');
+                item.textContent = s.title || '新对话';
+                item.onclick = () => switchChat(s.session_id);
                 list.appendChild(item);
             });
         }
-        function switchChat(id) {
-            currentSessionId = id;
-            saveSessions();
-            renderChatList();
-            loadChatMessages();
-            document.getElementById('currentChatTitle').textContent = chatSessions[id].title || '新对话';
+
+        async function loadChatMessages(sessionId) {
+            const messagesEl = document.getElementById('messages');
+            let messages = [];
+            try {
+                const resp = await fetch('/history/' + encodeURIComponent(sessionId));
+                const data = await resp.json();
+                messages = data.messages || [];
+            } catch (e) {
+                // 降级到 localStorage
+                const session = chatSessions[sessionId];
+                messages = session ? session.messages : [];
+            }
+
+            if (messages.length === 0) {
+                messagesEl.innerHTML = '<div class="welcome"><h2>👋 欢迎使用 KubeRAG</h2><p>上传 PDF 文档，然后开始提问吧！</p></div>';
+                document.getElementById('currentChatTitle').textContent = '新对话';
+                return;
+            }
+            messagesEl.innerHTML = '';
+            messages.forEach(msg => addMessageToDOM(msg.role, msg.content, msg.sources));
+            // 标题取第一条用户消息
+            const firstUser = messages.find(m => m.role === 'user');
+            document.getElementById('currentChatTitle').textContent =
+                firstUser ? firstUser.content.substring(0, 20) : '新对话';
+            scrollToBottom();
         }
+
+        async function switchChat(id) {
+            currentSessionId = id;
+            localStorage.setItem('kuberag_session', currentSessionId);
+            renderChatList();
+            await loadChatMessages(id);
+        }
+
         function newChat() {
             currentSessionId = generateSessionId();
             chatSessions[currentSessionId] = { title: '新对话', messages: [] };
             saveSessions();
+            // 新会话即时显示在列表（第一条消息发送后后端也会记录）
+            sessions.unshift({ session_id: currentSessionId, title: '新对话', msg_count: 0 });
             renderChatList();
             document.getElementById('messages').innerHTML = '<div class="welcome"><h2>👋 欢迎使用 KubeRAG</h2><p>上传 PDF 文档，然后开始提问吧！</p></div>';
             document.getElementById('currentChatTitle').textContent = '新对话';
         }
-        function loadChatMessages() {
-            const messagesEl = document.getElementById('messages');
-            const session = chatSessions[currentSessionId];
-            if (!session || session.messages.length === 0) {
-                messagesEl.innerHTML = '<div class="welcome"><h2>👋 欢迎使用 KubeRAG</h2><p>上传 PDF 文档，然后开始提问吧！</p></div>';
-                return;
-            }
-            messagesEl.innerHTML = '';
-            session.messages.forEach(msg => addMessageToDOM(msg.role, msg.content, msg.sources));
-            scrollToBottom();
-        }
+
         function addMessage(role, content, sources) {
             if (!chatSessions[currentSessionId]) chatSessions[currentSessionId] = { title: '新对话', messages: [] };
             chatSessions[currentSessionId].messages.push({ role, content, sources });
@@ -128,7 +167,6 @@
                 document.getElementById('currentChatTitle').textContent = chatSessions[currentSessionId].title;
             }
             saveSessions();
-            renderChatList();
             return addMessageToDOM(role, content, sources);
         }
         function addMessageToDOM(role, content, sources) {
@@ -153,7 +191,18 @@
                 sources.forEach((s, i) => {
                     const item = document.createElement('div');
                     item.className = 'source-item';
-                    item.textContent = `[${i+1}] ${s.file} 第${s.page}页`;
+                    if (s.type === 'web') {
+                        const link = document.createElement('a');
+                        link.href = s.page;
+                        link.target = '_blank';
+                        link.rel = 'noopener noreferrer';
+                        link.textContent = `[${i+1}] 🌐 ${s.file}`;
+                        link.style.color = '#2196f3';
+                        link.style.textDecoration = 'none';
+                        item.appendChild(link);
+                    } else {
+                        item.textContent = `[${i+1}] ${s.file} 第${s.page}页`;
+                    }
                     sourcesEl.appendChild(item);
                 });
                 bubble.appendChild(sourcesEl);
@@ -176,11 +225,27 @@
             try {
                 const response = await fetch('/upload', { method: 'POST', body: formData });
                 const result = await response.json();
-                alert('上传成功：' + result.message);
+                if (!response.ok) {
+                    alert('上传失败：' + (result.detail || result.message));
+                } else {
+                    alert('上传成功：' + result.message);
+                }
             } catch (error) {
                 alert('上传失败：' + error.message);
             }
             fileInput.value = '';
+        }
+        function renderSources(bubble, sources) {
+            const sourcesEl = document.createElement('div');
+            sourcesEl.className = 'sources';
+            sourcesEl.innerHTML = '<strong>📚 参考来源：</strong>';
+            sources.forEach((s, i) => {
+                const item = document.createElement('div');
+                item.className = 'source-item';
+                item.textContent = `[${i+1}] ${s.file} 第${s.page}页`;
+                sourcesEl.appendChild(item);
+            });
+            bubble.appendChild(sourcesEl);
         }
         async function sendQuestion() {
             const input = document.getElementById('questionInput');
@@ -198,27 +263,38 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ question, session_id: currentSessionId })
                 });
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.detail || ('HTTP ' + response.status));
+                }
+                // 解析 SSE 事件流：delta（答案增量）/ sources（引用）/ done（结束）
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
+                let buffer = '';
                 let fullAnswer = '';
+                let sources = [];
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    const chunk = decoder.decode(value, { stream: true });
-                    fullAnswer += chunk;
-                    contentEl.textContent = fullAnswer;
-                    scrollToBottom();
+                    buffer += decoder.decode(value, { stream: true });
+                    const parts = buffer.split('\n\n');
+                    buffer = parts.pop();
+                    for (const part of parts) {
+                        const line = part.trim();
+                        if (!line.startsWith('data:')) continue;
+                        let data;
+                        try { data = JSON.parse(line.slice(5).trim()); } catch (e) { continue; }
+                        if (data.type === 'delta') {
+                            fullAnswer += data.content;
+                            contentEl.textContent = fullAnswer;
+                            scrollToBottom();
+                        } else if (data.type === 'sources') {
+                            sources = data.sources || [];
+                        }
+                    }
                 }
                 contentEl.classList.remove('typing');
-                // 流式输出完成后获取出处（语义缓存已命中，调用很快）
-                const askResp = await fetch('/ask', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ question, session_id: currentSessionId })
-                });
-                const askResult = await askResp.json();
-                const sources = askResult.answer?.sources || [];
-                // 更新本地存储
+                // 更新本地存储（含引用来源）
                 const session = chatSessions[currentSessionId];
                 const lastMsg = session.messages[session.messages.length - 1];
                 lastMsg.content = fullAnswer;
@@ -226,18 +302,11 @@
                 saveSessions();
                 // 在 DOM 中显示出处
                 if (sources.length > 0) {
-                    const bubble = contentEl.parentElement;
-                    const sourcesEl = document.createElement('div');
-                    sourcesEl.className = 'sources';
-                    sourcesEl.innerHTML = '<strong>📚 参考来源：</strong>';
-                    sources.forEach((s, i) => {
-                        const item = document.createElement('div');
-                        item.className = 'source-item';
-                        item.textContent = `[${i+1}] ${s.file} 第${s.page}页`;
-                        sourcesEl.appendChild(item);
-                    });
-                    bubble.appendChild(sourcesEl);
+                    renderSources(contentEl.parentElement, sources);
                 }
+                // 刷新左侧会话列表（新会话获得标题、已有会话排序更新）
+                await fetchSessions();
+                renderChatList();
             } catch (error) {
                 contentEl.classList.remove('typing');
                 contentEl.textContent = '出错了：' + error.message;
@@ -251,8 +320,18 @@
                 sendQuestion();
             }
         }
-        renderChatList();
-        loadChatMessages();
+
+        // ===== 页面初始化：从后端恢复会话与历史 =====
+        (async function init() {
+            await fetchSessions();
+            // 当前 session 不存在于后端列表时，回退到最新会话或新建
+            if (!currentSessionId || !sessions.some(s => s.session_id === currentSessionId)) {
+                currentSessionId = sessions.length > 0 ? sessions[0].session_id : generateSessionId();
+                localStorage.setItem('kuberag_session', currentSessionId);
+            }
+            renderChatList();
+            await loadChatMessages(currentSessionId);
+        })();
     </script>
 </body>
 </html>

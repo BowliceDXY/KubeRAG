@@ -6,15 +6,19 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 )
 
-// ===== 配置 =====
+// ===== 配置（支持环境变量覆盖）=====
 const (
-	gatewayPort = ":8080"
-	backendURL  = "http://127.0.0.1:9004" // Python FastAPI 服务地址，按你实际端口改
-	rateLimit   = 10                        // 每个 IP 每秒最多 10 个请求
+	defaultGatewayPort = ":8080"
+	defaultBackendURL  = "http://127.0.0.1:9003" // Python FastAPI 服务地址（统一 9003）
+	rateLimit          = 10                       // 每个 IP 每秒最多 10 个请求
+	ipIdleTimeout      = 10 * time.Minute         // IP 记录空闲超时
+	cleanupInterval    = 5 * time.Minute          // 空闲 IP 清理协程运行间隔
 )
 
 // ===== 令牌桶限流器 =====
@@ -58,11 +62,21 @@ func (l *ipLimiter) allow(ip string) bool {
 	return false
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
+// cleanupLoop 定期清理长时间未活跃的 IP 记录，防止限流 map 无限增长（内存泄漏）
+func (l *ipLimiter) cleanupLoop() {
+	ticker := time.NewTicker(cleanupInterval)
+	defer ticker.Stop()
+	for range ticker.C {
+		l.mu.Lock()
+		cutoff := time.Now().Add(-ipIdleTimeout)
+		for ip, last := range l.lastTime {
+			if last.Before(cutoff) {
+				delete(l.lastTime, ip)
+				delete(l.tokens, ip)
+			}
+		}
+		l.mu.Unlock()
 	}
-	return b
 }
 
 var limiter = newIPLimiter()
@@ -102,64 +116,84 @@ func rateLimitMiddleware(next http.Handler) http.Handler {
 }
 
 // ===== 反向代理：转发到 Python 服务 =====
-func proxyHandler(w http.ResponseWriter, r *http.Request) {
-	targetURL := backendURL + r.URL.Path
-	if r.URL.RawQuery != "" {
-		targetURL += "?" + r.URL.RawQuery
-	}
-
-	req, err := http.NewRequest(r.Method, targetURL, r.Body)
-	if err != nil {
-		http.Error(w, "创建请求失败", http.StatusInternalServerError)
-		return
-	}
-
-	// 复制请求头
-	for key, values := range r.Header {
-		for _, value := range values {
-			req.Header.Add(key, value)
+func proxyHandler(backendURL string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		targetURL := backendURL + r.URL.Path
+		if r.URL.RawQuery != "" {
+			targetURL += "?" + r.URL.RawQuery
 		}
-	}
 
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadGateway)
-		json.NewEncoder(w).Encode(map[string]string{"error": "后端服务不可达，请确认 Python 服务已启动"})
-		return
-	}
-	defer resp.Body.Close()
-
-	// 复制响应头
-	for key, values := range resp.Header {
-		for _, value := range values {
-			w.Header().Add(key, value)
+		req, err := http.NewRequest(r.Method, targetURL, r.Body)
+		if err != nil {
+			http.Error(w, "创建请求失败", http.StatusInternalServerError)
+			return
 		}
-	}
-	w.WriteHeader(resp.StatusCode)
 
-	// 流式复制响应体（支持 /ask/stream 的逐字输出）
-	io.Copy(w, resp.Body)
+		// 复制请求头
+		for key, values := range r.Header {
+			for _, value := range values {
+				req.Header.Add(key, value)
+			}
+		}
+
+		client := &http.Client{Timeout: 120 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadGateway)
+			json.NewEncoder(w).Encode(map[string]string{"error": "后端服务不可达，请确认 Python 服务已启动"})
+			return
+		}
+		defer resp.Body.Close()
+
+		// 复制响应头
+		for key, values := range resp.Header {
+			for _, value := range values {
+				w.Header().Add(key, value)
+			}
+		}
+		w.WriteHeader(resp.StatusCode)
+
+		// 流式复制响应体（支持 /ask/stream 的逐字输出）
+		io.Copy(w, resp.Body)
+	}
 }
 
 // ===== 网关健康检查 =====
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"status":  "ok",
-		"service": "KubeRAG Gateway",
-		"backend": backendURL,
-	})
+func healthHandler(backendURL string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"status":  "ok",
+			"service": "KubeRAG Gateway",
+			"backend": backendURL,
+		})
+	}
 }
 
 func main() {
+	// 配置：环境变量优先，缺省用统一默认值
+	gatewayPort := os.Getenv("GATEWAY_PORT")
+	if gatewayPort == "" {
+		gatewayPort = defaultGatewayPort
+	}
+	if !strings.HasPrefix(gatewayPort, ":") {
+		gatewayPort = ":" + gatewayPort
+	}
+	backendURL := os.Getenv("BACKEND_URL")
+	if backendURL == "" {
+		backendURL = defaultBackendURL
+	}
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health", healthHandler)
-	mux.HandleFunc("/", proxyHandler) // 其他请求全部转发到 Python
+	mux.HandleFunc("/health", healthHandler(backendURL))
+	mux.HandleFunc("/", proxyHandler(backendURL)) // 其他请求全部转发到 Python
 
 	// 中间件链：限流 → 日志 → 路由
 	handler := rateLimitMiddleware(loggingMiddleware(mux))
+
+	// 启动空闲 IP 清理协程，防止限流 map 无限增长
+	go limiter.cleanupLoop()
 
 	fmt.Printf("========================================\n")
 	fmt.Printf("  KubeRAG Go 网关启动\n")

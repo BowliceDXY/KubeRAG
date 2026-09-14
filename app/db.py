@@ -29,14 +29,20 @@ def init_db():
 
 
 def get_history(session_id, limit=20):
-    """获取某个 session 的对话历史，按时间正序，默认取最近 20 条"""
+    """
+    获取某个 session 的对话历史：取最近 limit 条消息，按时间正序返回。
+    用自增 id 排序（而非 created_at，避免同秒并列导致顺序不稳）；
+    先倒序取最新 N 条，再正序还原，保证多轮对话上下文始终是最新内容。
+    """
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("""
-        SELECT role, content FROM messages 
-        WHERE session_id = ? 
-        ORDER BY created_at ASC 
-        LIMIT ?
+        SELECT role, content FROM (
+            SELECT id, role, content FROM messages
+            WHERE session_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+        ) ORDER BY id ASC
     """, (session_id, limit))
     rows = c.fetchall()
     conn.close()
@@ -53,3 +59,29 @@ def save_message(session_id, role, content):
     )
     conn.commit()
     conn.close()
+
+
+def list_sessions():
+    """
+    列出所有对话会话，按最近活跃时间倒序。
+    返回 [{session_id, title, msg_count}]，title 取该会话第一条用户消息。
+    """
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+        SELECT session_id,
+               (SELECT content FROM messages m2
+                WHERE m2.session_id = m1.session_id AND m2.role = 'user'
+                ORDER BY id ASC LIMIT 1) AS title,
+               COUNT(*) AS msg_count,
+               MAX(id) AS last_id
+        FROM messages m1
+        GROUP BY session_id
+        ORDER BY last_id DESC
+    """)
+    rows = c.fetchall()
+    conn.close()
+    return [
+        {"session_id": r[0], "title": (r[1] or "新对话")[:20], "msg_count": r[2]}
+        for r in rows
+    ]

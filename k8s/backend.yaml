@@ -18,7 +18,10 @@ metadata:
   labels:
     app: backend
 spec:
-  replicas: 2
+  # 固定 1 副本：ChromaDB（本地文件+SQLite）与 chat_history.db（SQLite）都是单写者存储，
+  # 多副本并发写同一 ReadWriteOnce PVC 会锁冲突/数据损坏。需要横向扩容时，
+  # 先将向量库外部化（如 Qdrant/Weaviate）、对话历史迁移到共享数据库，再开启多副本。
+  replicas: 1
   selector:
     matchLabels:
       app: backend

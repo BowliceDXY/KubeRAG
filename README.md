@@ -71,6 +71,15 @@ python eval/generate_testset.py
 python eval/evaluate.py
 ```
 
+## 单元测试
+
+冒烟测试覆盖：计算器 AST 白名单安全求值、语义缓存余弦相似度、RRF 融合排序、SQLite 对话历史、上下文裁剪：
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest tests/ -v
+```
+
 ## 项目架构
 
 ```
@@ -107,6 +116,13 @@ KubeRAG/
 │   ├── evaluate.py        # 检索质量评测（HitRate@k / MRR）
 │   ├── testset.jsonl      # 测试题集（20题）
 │   └── results.json       # 评测结果
+├── tests/
+│   ├── conftest.py        # 测试路径配置
+│   ├── test_calculator.py # 计算器安全求值测试
+│   ├── test_cache.py      # 语义缓存余弦相似度测试
+│   ├── test_rrf.py        # RRF 融合测试
+│   ├── test_history.py    # SQLite 对话历史测试
+│   └── test_trim.py       # 上下文裁剪测试
 ├── k8s/
 │   ├── namespace.yaml     # 命名空间
 │   ├── configmap.yaml     # 非敏感配置
@@ -129,6 +145,7 @@ KubeRAG/
 │   ├── chroma_db/    # ChromaDB 向量数据
 │   └── chat_history.db # SQLite 对话历史
 ├── requirements.txt
+├── requirements-dev.txt
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .env.example
@@ -212,8 +229,8 @@ kubectl port-forward svc/gateway -n kuberag 8080:8080
 ```
 
 **K8s 部署特性**：
-- 后端 + 网关各 2 副本起步，RollingUpdate 零停机发布
-- HPA 自动扩缩（后端 2-5 副本，CPU 70% / 内存 80% 触发）
+- 网关 2 副本起步（无状态，可水平扩容），后端固定 1 副本（ChromaDB / SQLite 为本地文件单写者，多副本并发写会锁冲突，详见 k8s/backend.yaml 注释），RollingUpdate 零停机发布
+- 网关 HPA 自动扩缩（2-3 副本，CPU 70% 触发）；后端待向量库/对话历史外部化后可开启扩容
 - ConfigMap 管理非敏感配置，Secret 管理 API Key
 - PVC 持久化 ChromaDB 向量数据、上传文件、对话历史
 - Liveness / Readiness 探针，preStop 优雅退出

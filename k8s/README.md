@@ -14,7 +14,7 @@
                     └──────┬──────┘
                            │ :9003
                     ┌──────▼──────┐
-                    │  Backend ×2 │ (HPA: 2-5)
+                    │  Backend ×1 │ (固定副本：本地文件存储单写者)
                     └──┬───────┬──┘
                        │       │
                 ┌──────▼─┐   ┌─▼──────┐
@@ -127,6 +127,6 @@ kubectl delete namespace kuberag
 - Redis：使用托管服务（AWS ElastiCache / 阿里云 Redis）或 Redis Operator，而非单实例
 - 镜像：使用固定版本 tag 而非 `latest`，配合 ImagePullPolicy=Always
 - 密钥：使用 ExternalSecret / SealedSecret / Vault 管理，不直接提交 Secret 文件
-- 持久化：ChromaDB 考虑迁移到独立服务（如 Qdrant / Weaviate），多副本共享存储
+- 持久化：ChromaDB 与 SQLite 都是本地文件单写者存储，因此 Backend 当前固定 1 副本（HPA 仅作用于无状态的 Gateway）。要支持 Backend 多副本扩容，需先把向量库迁移到独立服务（如 Qdrant / Weaviate）、对话历史迁移到共享数据库（如 PostgreSQL），再开启 Backend HPA
 - 监控：接入 Prometheus + Grafana，配置 SLO 告警
 - CI/CD：使用 ArgoCD / Flux 实现 GitOps 部署
